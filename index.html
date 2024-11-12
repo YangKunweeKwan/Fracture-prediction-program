@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fracture Prediction Model</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 5px;
+        }
+        .author {
+            font-size: 14px;
+            color: gray;
+            text-align: right;
+            margin-right: 20px;
+        }
+        .container {
+            margin: 20px auto;
+            width: 50%;
+            text-align: left;
+        }
+        label {
+            display: block;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            box-sizing: border-box;
+        }
+        .explanation, .sub-explanation {
+            font-size: 12px;
+            color: gray;
+        }
+        .sub-explanation {
+            font-size: 11px;
+            display: inline;
+        }
+        .space-below {
+            margin-bottom: 15px;
+        }
+        .buttons {
+            margin-top: 20px;
+            text-align: center;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 18px;
+            white-space: pre-wrap;
+        }
+        .small-text {
+            font-size: 14px;
+            color: gray;
+        }
+        .recommendation {
+            font-size: 16px;
+            margin-top: 10px;
+            color: #333;
+        }
+    </style>
+
+     <!-- Firebase SDKs -->
+     <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js"></script>
+     <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js"></script>
+ 
+     <script>
+         // Firebase configuration and initialization
+         const firebaseConfig = {
+             apiKey: "AIzaSyADlH-fpuJX3aNCqFEQUFhNwl2ZFrmQ50o",
+             authDomain: "fracture-prediction-model.firebaseapp.com",
+             projectId: "fracture-prediction-model",
+             storageBucket: "fracture-prediction-model.appspot.com",
+             messagingSenderId: "586259731930",
+             appId: "1:586259731930:web:0de8446f11697d34eb5ce3",
+             measurementId: "G-M3X6MRZ1HR"
+         };
+ 
+         let db;
+ 
+         document.addEventListener("DOMContentLoaded", function () {
+             firebase.initializeApp(firebaseConfig);
+             db = firebase.firestore();
+ 
+             // Enable the submit button only after Firestore is initialized
+             document.getElementById("submitBtn").disabled = false;
+             console.log("Firestore initialized and submit button enabled.");
+         });
+ 
+         // Function to submit data to Firestore
+         async function submitDataToFirestore() {
+             if (!db) {
+                 alert("Firestore not initialized. Please wait a moment and try again.");
+                 return;
+             }
+ 
+             const patientData = {
+                 age: parseInt(document.getElementById('age').value) || 0,
+                 injuryMechanism: parseInt(document.getElementById('mechanism').value) || 0,
+                 injuryDuration: parseInt(document.getElementById('injuryDuration').value) || 0,
+                 painProgression: parseInt(document.getElementById('painProgression').value) || 0,
+                 swelling: parseInt(document.getElementById('swelling').value) || 0,
+                 boneTenderness: parseInt(document.getElementById('boneTenderness').value) || 0,
+                 weightBearing: parseInt(document.getElementById('weightBearing').value) || 0,
+                 rom: parseInt(document.getElementById('rom').value) || 0,
+                 bruise: parseInt(document.getElementById('bruise').value) || 0,
+                 osteoporosis: parseInt(document.getElementById('osteoporosis').value) || 0,
+                 chronicCondition: parseInt(document.getElementById('chronicCondition').value) || 0,
+                 timestamp: new Date().toISOString()
+             };
+ 
+             try {
+                 const docRef = await db.collection("patients").add(patientData);
+                 alert("Data submitted successfully with ID: " + docRef.id);
+                 resetForm();  // Clear form after submission
+             } catch (error) {
+                 console.error("Error adding document: ", error);
+                 alert("Failed to submit data: " + error.message);
+             }
+         }
+ 
+         // Reset form function
+         function resetForm() {
+             document.querySelectorAll('input').forEach(input => input.value = '');
+             document.getElementById('painProgression').value = "1"; // Reset dropdown to default
+             document.getElementById('result').innerText = '';
+            }
+
+        function calculateScore() {
+            let age = parseInt(document.getElementById('age').value) || 0;
+            let injuryDuration = parseInt(document.getElementById('injuryDuration').value) || 0;
+            let painProgression = parseInt(document.getElementById('painProgression').value) || 0;
+
+            // Convert age to score
+            if (age < 50) age = 0;
+            else if (age >= 50 && age <= 65) age = 1;
+            else age = 2;
+
+            injuryDuration = (injuryDuration > 24) ? painProgression : 0;
+
+            let mechanism = parseInt(document.getElementById('mechanism').value) || 0;
+            let swelling = parseInt(document.getElementById('swelling').value) || 0;
+            let boneTenderness = parseInt(document.getElementById('boneTenderness').value) || 0;
+            let weightBearing = parseInt(document.getElementById('weightBearing').value) || 0;
+            let rom = parseInt(document.getElementById('rom').value) || 0;
+            let bruise = parseInt(document.getElementById('bruise').value) || 0;
+            let osteoporosis = parseInt(document.getElementById('osteoporosis').value) || 0;
+            let chronicCondition = parseInt(document.getElementById('chronicCondition').value) || 0;
+
+            // Calculating the total score
+            let totalScore = age + injuryDuration + mechanism + swelling + boneTenderness + weightBearing + rom + bruise + osteoporosis + chronicCondition;
+            
+            // Determining fracture possibility and setting the recommendation
+            let fracturePossibility;
+            let recommendation;
+            
+            if (totalScore <= 6) {
+                fracturePossibility = "Fracture less likely";
+                recommendation = "Recommendation: Your condition would probably be a contusion or grade 1 sprain with a lower possibility of fracture. However, you should still monitor your symptoms. Rest, ice, compression, and elevation (RICE) can help reduce pain and swelling. Avoid intense activities for a few days. If symptoms persist or worsen for the next 2-3 days, consider visiting a healthcare provider for further evaluation. Avoid postures that cause pain. After enough rest, I recommend careful stretching of your muscle or joint with gradual intensity increase in a pain-tolerable manner.";
+            } else if (totalScore >= 7 && totalScore <= 9) {
+                fracturePossibility = "Possible fracture";
+                recommendation = "Recommendation: There is a possibility of a fracture or more than grade 2 sprain. Limit weight-bearing and strenuous activities on the injured area. Applying ice and keeping the limb elevated may help with swelling and pain. It’s advised to consult a healthcare provider for an X-ray or further evaluation to rule out a fracture.";
+            } else {
+                fracturePossibility = "High likelihood of fracture";
+                recommendation = "Recommendation: A fracture is highly likely based on your symptoms. Avoid any weight-bearing on the injured area and seek immediate medical attention for a thorough evaluation and appropriate imaging. Immobilization or splinting may be necessary to prevent further injury.";
+            }
+
+            // Displaying the result and recommendation
+            document.getElementById('result').innerHTML = `Final Score: ${totalScore}<br>Fracture Possibility: ${fracturePossibility}<br><br>
+                <span class="small-text">Scoring Guidelines:<br>- Score ≤ 6: Fracture less likely<br>- Score 7-9: Possible fracture<br>- Score ≥ 10: High likelihood of fracture</span>`;
+            document.getElementById('recommendation').innerText = recommendation;
+        }
+    </script>
+</head>
+<body>
+    <h1>Fracture Prediction Model</h1>
+    <div class="author">by 양구니관</div>
+    <div class="container">
+        <label for="age">Age:</label>
+        <input type="number" id="age" placeholder="Enter age">
+        <div class="explanation">Scoring: <50 (0 points), 50-65 (1 point), >65 (2 points)</div>
+
+            <label for="mechanism">Injury Mechanism (0 = Low, 2 = Moderate, 3 = High):</label>
+            <input type="number" id="mechanism" min="0" max="3" placeholder="Enter injury mechanism score">
+            
+            <label for="injuryDuration">Injury Duration (hours):</label>
+            <input type="number" id="injuryDuration" placeholder="Enter injury duration in hours" class="space-below">
+    
+            <label for="painProgression"><b>Pain Progression:</b> <span class="sub-explanation">(Choose if injury time is over 24hrs)</span></label>
+            <select id="painProgression">
+                <option value="1">Over 24 hours and worsening</option>
+                <option value="-1">Over 24 hours and improving</option>
+            </select>
+    
+            <label for="swelling">Swelling (0 = None, 1 = Mild, 2 = Severe):</label>
+            <input type="number" id="swelling" min="0" max="2" placeholder="Enter swelling score">
+    
+            <label for="boneTenderness">Bone Point Tenderness (0 = None, 1 = Mild, 2 = Severe):</label>
+            <input type="number" id="boneTenderness" min="0" max="2" placeholder="Enter bone tenderness score">
+    
+            <label for="weightBearing">Weight-bearing (0 = Full, 1 = Partial, 2 = Impossible):</label>
+            <input type="number" id="weightBearing" min="0" max="2" placeholder="Enter weight-bearing score">
+    
+            <label for="rom">Range of Motion (0 = >75%, 1 = 25%-75%, 2 = <25%):</label>
+            <input type="number" id="rom" min="0" max="2" placeholder="Enter ROM score">
+    
+            <label for="bruise">Bruise (0 = None, 1 = Bruise, 2 = Blister):</label>
+            <input type="number" id="bruise" min="0" max="2" placeholder="Enter bruise score">
+    
+            <label for="osteoporosis">Osteoporosis (0 = No, 2 = Yes):</label>
+            <input type="number" id="osteoporosis" min="0" max="2" placeholder="Enter osteoporosis score">
+    
+            <label for="chronicCondition">Chronic Condition** (0 = None, 1 = One, 2 = Multiple):</label>
+            <input type="number" id="chronicCondition" min="0" max="2" placeholder="Enter chronic condition score">
+            <div class="explanation">One: Conditions like osteoporosis, diabetes; Multiple: Two or more of these conditions.</div>
+    
+            <div class="buttons">
+                <button onclick="calculateScore()">Enter for Result</button>
+                <button onclick="resetForm()">Reset</button>
+                <button onclick="submitDataToFirestore()">Submit Data</button>
+            </div>
+    
+            <div id="result"></div>
+            <div class="recommendation" id="recommendation"></div>
+        </div>
+    </body>
+    </html>
+    
